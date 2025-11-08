@@ -1,3 +1,4 @@
+using Biblioteca_de_clases;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Data;
@@ -19,76 +20,20 @@ namespace Formulario_3
 
         }
 
-
-        public void Eliminar_Datos(int proveedorID)
-        {
-            try
-            {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-                using (SqlConnection cn = new SqlConnection(conexion))
-                {
-                    cn.Open();
-                    string query = "DELETE FROM Proveedores WHERE ProveedorID = @ProveedorID";
-
-                    SqlCommand cmd = new SqlCommand(query, cn);
-                    cmd.Parameters.AddWithValue(@"ProveedorID", proveedorID);
-
-                    int filasAfectadas = cmd.ExecuteNonQuery();
-
-                    if (filasAfectadas > 0)
-                    {
-                        MessageBox.Show("Registro eliminado correctamente", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        Mostrar_Datos();
-                    }
-                    else
-                    {
-                        MessageBox.Show("No se encontró el registro para eliminara", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-
-
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private void btnEliminar_Click(object sender, EventArgs e)
-        {
-            if (dataGridView1.SelectedRows.Count > 0)
-            {
-                int proveedorID = Convert.ToInt32(dataGridView1.SelectedRows[0].Cells["ID Proveedor"].Value);
-                Eliminar_Datos(proveedorID);
-            }
-            else
-            {
-                MessageBox.Show("Seleccione una fila para eliminar", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
-        }
-
+        //______________________Mostrar Datos______________________\\
         public void Mostrar_Datos()
         {
             try
             {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-
-
-                using (SqlConnection cn = new SqlConnection(conexion))
+                using (var db = new AppDbContext())
                 {
-                    cn.Open();
-                    string query = "SELECT ProveedorID, NombreProveedor, Telefono, CorreoElectronico FROM Proveedores";
-
-                    SqlDataAdapter da = new SqlDataAdapter(query, cn);
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-                    dataGridView1.AutoGenerateColumns = false;
-                    dataGridView1.DataSource = dt;
+                    var lista = db.Proveedores.ToList();
+                    dataGridView1.DataSource = lista;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error al mostrar los datos: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
         }
@@ -97,30 +42,69 @@ namespace Formulario_3
         {
             Mostrar_Datos();
         }
+        //__________________________________________________________\\
 
+
+        //______________________Insertar Datos______________________\\
+        public void Insertar_Datos(DataGridViewRow fila)
+        {
+            try
+            {
+                using (var db = new AppDbContext())
+                {
+                    var nuevoProveedor = new Proveedores
+                    {
+                        NombreProveedor = fila.Cells["Proveedor"].Value?.ToString(),
+                        CorreoElectronico = fila.Cells["Correo Electronico"].Value?.ToString(),
+                        Telefono = fila.Cells["Telefono"].Value?.ToString(),
+                        
+                    };
+
+                    db.Proveedores.Add(nuevoProveedor);
+                    db.SaveChanges();
+                }
+
+                MessageBox.Show("Registro insertado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Mostrar_Datos();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al insertar: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void btnInsertar_Click(object sender, EventArgs e)
+        {
+            foreach (DataGridViewRow fila in dataGridView1.Rows)
+            {
+                if (fila.IsNewRow) continue;
+                if (fila.Cells["ID Proveedor"].Value == null || string.IsNullOrEmpty(fila.Cells["ID Proveedor"].Value.ToString()))
+                {
+                    Insertar_Datos(fila);
+                }
+            }
+        }
+        //__________________________________________________________\\
+
+
+        //______________________Actualizar Datos______________________\\
         public void Actualizar_Datos(int proveedorID, DataGridViewRow fila)
         {
             try
             {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-                using (SqlConnection cn = new SqlConnection(conexion))
+                using (var db = new AppDbContext())
                 {
-                    cn.Open();
+                    var proveedor = db.Proveedores.FirstOrDefault(c => c.ProveedorID == proveedorID);
 
-                    string query = "UPDATE Proveedores SET NombreProveedor=@NombreProveedor, Telefono=@Telefono, " +
-                        " CorreoElectronico=@CorreoElectronico WHERE ProveedorID=@ProveedorID";
-
-                    SqlCommand cmd = new SqlCommand(query, cn);
-                    cmd.Parameters.AddWithValue("@ProveedorID", proveedorID);
-                    cmd.Parameters.AddWithValue("@NombreProveedor", fila.Cells["Proveedor"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Telefono", fila.Cells["Telefono"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@CorreoElectronico", fila.Cells["Correo Electronico"].Value ?? DBNull.Value);
-
-
-                    int filasAfectadas = cmd.ExecuteNonQuery();
-
-                    if (filasAfectadas > 0)
+                    if (proveedor != null)
                     {
+                        proveedor.NombreProveedor = fila.Cells["Proveedor"].Value?.ToString();
+                        proveedor.CorreoElectronico = fila.Cells["Correo Electronico"].Value?.ToString();
+                        proveedor.Telefono = fila.Cells["Telefono"].Value?.ToString();
+                        
+
+                        db.SaveChanges();
+
                         MessageBox.Show("Registro actualizado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         Mostrar_Datos();
                     }
@@ -142,7 +126,6 @@ namespace Formulario_3
             {
                 DataGridViewRow fila = dataGridView1.SelectedRows[0];
                 int proveedorID = Convert.ToInt32(fila.Cells["ID Proveedor"].Value);
-
                 Actualizar_Datos(proveedorID, fila);
             }
             else
@@ -150,51 +133,52 @@ namespace Formulario_3
                 MessageBox.Show("Seleccione una fila para actualizar.", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
+        //_____________________________________________________________\\
+        
 
-        public void Insertar_Datos(DataGridViewRow fila)
+
+        //______________________Eliminar Datos_________________________\\
+        public void Eliminar_Datos(int proveedorID)
         {
             try
             {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-                using (SqlConnection cn = new SqlConnection(conexion))
+                using (var db = new AppDbContext())
                 {
-                    cn.Open();
+                    var proveedor = db.Proveedores.FirstOrDefault(c => c.ProveedorID == proveedorID);
 
-                    string query = "INSERT INTO Proveedores (NombreProveedor, Telefono, CorreoElectronico) " +
-                                   "VALUES (@NombreProveedor, @Telefono, @CorreoElectronico)";
-
-                    SqlCommand cmd = new SqlCommand(query, cn);
-                    cmd.Parameters.AddWithValue("@NombreProveedor", fila.Cells["Proveedor"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Telefono", fila.Cells["Telefono"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@CorreoElectronico", fila.Cells["Correo Electronico"].Value ?? DBNull.Value);
-
-
-                    int filasAfectadas = cmd.ExecuteNonQuery();
-
-                    if (filasAfectadas > 0)
+                    if (proveedor != null)
                     {
-                        MessageBox.Show("Registro insertado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        db.Proveedores.Remove(proveedor);
+                        db.SaveChanges();
+
+                        MessageBox.Show("Registro eliminado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         Mostrar_Datos();
+                    }
+                    else
+                    {
+                        MessageBox.Show("No se encontró el registro para eliminar.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error al insertar: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error al eliminar: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private void btnInsertar_Click(object sender, EventArgs e)
+        private void btnEliminar_Click(object sender, EventArgs e)
         {
-            foreach (DataGridViewRow fila in dataGridView1.Rows)
+            if (dataGridView1.SelectedRows.Count > 0)
             {
-                if (fila.IsNewRow) continue;
-                if (fila.Cells["ID Proveedor"].Value == null || string.IsNullOrEmpty(fila.Cells["ID Proveedor"].Value.ToString()))
-                {
-                    Insertar_Datos(fila);
-                }
+                int proveedorID = Convert.ToInt32(dataGridView1.SelectedRows[0].Cells["ID Proveedor"].Value);
+                Eliminar_Datos(proveedorID);
+            }
+            else
+            {
+                MessageBox.Show("Seleccione una fila para eliminar", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
+        //______________________________________________________________\\
 
         private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {

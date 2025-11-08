@@ -1,7 +1,13 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using Actividad_practica_III;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Data;
+using System.Linq;
+using System.Windows.Forms;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using Biblioteca_de_clases;
+
 
 
 
@@ -72,95 +78,96 @@ namespace Actividad_practica_III
         {
 
         }
-
+        //__________________________________Mostra Datos_________________________________//
         public void Mostrar_Datos()
         {
             try
             {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-
-
-                using (SqlConnection cn = new SqlConnection(conexion))
+                using (var db = new AppDbContext())
                 {
-                    cn.Open();
-                    string query = "SELECT ClienteID, Nombre_completo, Correo_Electronico, Telefono, Direccion FROM Clientes";
-
-                    SqlDataAdapter da = new SqlDataAdapter(query, cn);
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-                    dataGridView1.AutoGenerateColumns = false;
-                    dataGridView1.DataSource = dt;
+                    var lista = db.Clientes.ToList();
+                    dataGridView1.DataSource = lista;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error al mostrar los datos: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
+        private void btnMostrar_Click_1(object sender, EventArgs e)
+        {
+            Mostrar_Datos();
+        }
+        //________________________________________________________________________//
 
+
+        //__________________________Eliminar Datos______________________________//
         public void Eliminar_datos(int clienteID)
         {
             try
             {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-                using (SqlConnection cn = new SqlConnection(conexion))
+                using (var db = new AppDbContext())
                 {
-                    cn.Open();
-                    string query = "DELETE FROM Clientes WHERE ClienteID = @ClienteID";
+                    var cliente = db.Clientes.FirstOrDefault(c => c.ClienteID == clienteID);
 
-                    SqlCommand cmd = new SqlCommand(query, cn);
-                    cmd.Parameters.AddWithValue(@"ClienteID", clienteID);
-
-                    int filasAfectadas = cmd.ExecuteNonQuery();
-
-                    if (filasAfectadas > 0)
+                    if (cliente != null)
                     {
-                        MessageBox.Show("Registro eliminado correctamente", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        db.Clientes.Remove(cliente);
+                        db.SaveChanges();
+
+                        MessageBox.Show("Registro eliminado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         Mostrar_Datos();
                     }
                     else
                     {
-                        MessageBox.Show("No se encontró el registro para eliminara", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show("No se encontró el registro para eliminar.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
-
-
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error al eliminar: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
 
+        private void btnEliminar_Click_1(object sender, EventArgs e)
+        {
+            if (dataGridView1.SelectedRows.Count > 0)
+            {
+                int clienteID = Convert.ToInt32(dataGridView1.SelectedRows[0].Cells["ID Cliente"].Value);
+                Eliminar_datos(clienteID);
+            }
+            else
+            {
+                MessageBox.Show("Seleccione una fila para eliminar", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+        //_________________________________________________________________________//
+
+
+        //____________________________Insertar Datos______________________________//
         public void Insertar_Datos(DataGridViewRow fila)
         {
             try
             {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-                using (SqlConnection cn = new SqlConnection(conexion))
+                using (var db = new AppDbContext())
                 {
-                    cn.Open();
-
-                    string query = "INSERT INTO Clientes (Nombre_completo, Correo_Electronico, Telefono, Direccion) " +
-                                   "VALUES (@Nombre, @Correo, @Telefono, @Direccion)";
-
-                    SqlCommand cmd = new SqlCommand(query, cn);
-                    cmd.Parameters.AddWithValue("@ClienteID", fila.Cells["ID Cliente"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Nombre", fila.Cells["Nombre"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Correo", fila.Cells["Correo Electronico"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Telefono", fila.Cells["Telefono"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Direccion", fila.Cells["Direccion"].Value ?? DBNull.Value);
-
-                    int filasAfectadas = cmd.ExecuteNonQuery();
-
-                    if (filasAfectadas > 0)
+                    var nuevoCliente = new Clientes
                     {
-                        MessageBox.Show("Registro insertado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        Mostrar_Datos();
-                    }
+                        Nombre_completo = fila.Cells["Nombre"].Value?.ToString(),
+                        Correo_Electronico = fila.Cells["Correo Electronico"].Value?.ToString(),
+                        Telefono = fila.Cells["Telefono"].Value?.ToString(),
+                        Direccion = fila.Cells["Direccion"].Value?.ToString()
+                    };
+
+                    db.Clientes.Add(nuevoCliente);
+                    db.SaveChanges();
                 }
+
+                MessageBox.Show("Registro insertado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Mostrar_Datos();
             }
             catch (Exception ex)
             {
@@ -168,30 +175,39 @@ namespace Actividad_practica_III
             }
         }
 
+        private void btnInsertar_Click_1(object sender, EventArgs e)
+        {
+            foreach (DataGridViewRow fila in dataGridView1.Rows)
+            {
+                if (fila.IsNewRow) continue;
+                if (fila.Cells["ID Cliente"].Value == null || string.IsNullOrEmpty(fila.Cells["ID Cliente"].Value.ToString()))
+                {
+                    Insertar_Datos(fila);
+                }
+            }
+        }
+        //___________________________________________________________________________//
 
+
+
+        //__________________________Actualizar Datos_______________________________//
         public void Actualizar_Datos(int clienteID, DataGridViewRow fila)
         {
             try
             {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-                using (SqlConnection cn = new SqlConnection(conexion))
+                using (var db = new AppDbContext())
                 {
-                    cn.Open();
+                    var cliente = db.Clientes.FirstOrDefault(c => c.ClienteID == clienteID);
 
-                    string query = "UPDATE Clientes SET Nombre_completo=@Nombre, Correo_Electronico=@Correo, " +
-                                   "Telefono=@Telefono, Direccion=@Direccion WHERE ClienteID=@ClienteID";
-
-                    SqlCommand cmd = new SqlCommand(query, cn);
-                    cmd.Parameters.AddWithValue("@ClienteID", clienteID);
-                    cmd.Parameters.AddWithValue("@Nombre", fila.Cells["Nombre"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Correo", fila.Cells["Correo Electronico"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Telefono", fila.Cells["Telefono"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Direccion", fila.Cells["Direccion"].Value ?? DBNull.Value);
-
-                    int filasAfectadas = cmd.ExecuteNonQuery();
-
-                    if (filasAfectadas > 0)
+                    if (cliente != null)
                     {
+                        cliente.Nombre_completo = fila.Cells["Nombre"].Value?.ToString();
+                        cliente.Correo_Electronico = fila.Cells["Correo Electronico"].Value?.ToString();
+                        cliente.Telefono = fila.Cells["Telefono"].Value?.ToString();
+                        cliente.Direccion = fila.Cells["Direccion"].Value?.ToString();
+
+                        db.SaveChanges();
+
                         MessageBox.Show("Registro actualizado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         Mostrar_Datos();
                     }
@@ -207,8 +223,20 @@ namespace Actividad_practica_III
             }
         }
 
-
-
+        private void btnActualizar_Click_1(object sender, EventArgs e)
+        {
+            if (dataGridView1.SelectedRows.Count > 0)
+            {
+                DataGridViewRow fila = dataGridView1.SelectedRows[0];
+                int clienteID = Convert.ToInt32(fila.Cells["ID Cliente"].Value);
+                Actualizar_Datos(clienteID, fila);
+            }
+            else
+            {
+                MessageBox.Show("Seleccione una fila para actualizar.", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+        //___________________________________________________________________________//
 
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -237,51 +265,8 @@ namespace Actividad_practica_III
         private void label1_Click_1(object sender, EventArgs e)
         {
 
-        }
+        }           
 
-        private void btnMostrar_Click_1(object sender, EventArgs e)
-        {
-            Mostrar_Datos();
-        }
-
-        private void btnActualizar_Click_1(object sender, EventArgs e)
-        {
-            if (dataGridView1.SelectedRows.Count > 0)
-            {
-                DataGridViewRow fila = dataGridView1.SelectedRows[0];
-                int clienteID = Convert.ToInt32(fila.Cells["ID Cliente"].Value);
-
-                Actualizar_Datos(clienteID, fila);
-            }
-            else
-            {
-                MessageBox.Show("Seleccione una fila para actualizar.", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
-        }
-
-        private void btnEliminar_Click_1(object sender, EventArgs e)
-        {
-            if (dataGridView1.SelectedRows.Count > 0)
-            {
-                int clienteID = Convert.ToInt32(dataGridView1.SelectedRows[0].Cells["ID Cliente"].Value);
-                Eliminar_datos(clienteID);
-            }
-            else
-            {
-                MessageBox.Show("Seleccione una fila para eliminar", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
-        }
-
-        private void btnInsertar_Click_1(object sender, EventArgs e)
-        {
-            foreach (DataGridViewRow fila in dataGridView1.Rows)
-            {
-                if (fila.IsNewRow) continue; 
-                if (fila.Cells["ID Cliente"].Value == null || string.IsNullOrEmpty(fila.Cells["ID Cliente"].Value.ToString()))
-                {
-                    Insertar_Datos(fila);
-                }
-            }
-        }
+        
     }
 }

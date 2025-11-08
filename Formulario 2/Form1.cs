@@ -1,7 +1,14 @@
 ﻿using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Data;
+using System.Linq;
 using System.Windows.Forms;
+using System.Windows.Forms;
+using Biblioteca_de_clases;
+
+
+
 
 namespace Formulario_2
 {
@@ -13,57 +20,51 @@ namespace Formulario_2
         }
 
         
-        
+        //___________________________Mostrar Datos________________________//
         public void Mostrar_Datos()
         {
             try
             {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-
-
-                using (SqlConnection cn = new SqlConnection(conexion))
+                using (var db = new AppDbContext())
                 {
-                    cn.Open();
-                    string query = "SELECT CategoriaID, Nombre FROM Categoria";
-
-                    SqlDataAdapter da = new SqlDataAdapter(query, cn);
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-                    dataGridView1.AutoGenerateColumns = false;
-                    dataGridView1.DataSource = dt;
+                    var lista = db.Categoria.ToList();
+                    dataGridView1.DataSource = lista;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error al mostrar los datos: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
+        private void btnMostrar_Click(object sender, EventArgs e)
+        {
+            Mostrar_Datos();
+        }
+        //_________________________________________________________________//
+
+
+
+
+
+        //___________________________Inseertar Datos________________________//
         public void Insertar_Datos(DataGridViewRow fila)
         {
             try
             {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-                using (SqlConnection cn = new SqlConnection(conexion))
+                using (var db = new AppDbContext())
                 {
-                    cn.Open();
-
-                    string query = "INSERT INTO Categoria (Nombre) " +
-                                   "VALUES (@Nombre)";
-
-                    SqlCommand cmd = new SqlCommand(query, cn);
-                    //cmd.Parameters.AddWithValue("@CategoriaID", fila.Cells["ID Categoria"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Nombre", fila.Cells["Nombre"].Value ?? DBNull.Value);
-                    
-
-                    int filasAfectadas = cmd.ExecuteNonQuery();
-
-                    if (filasAfectadas > 0)
+                    var nuevaCategoria = new Categoria
                     {
-                        MessageBox.Show("Registro insertado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        Mostrar_Datos();
-                    }
+                        Nombre = fila.Cells["Nombre"].Value?.ToString()
+                    };
+
+                    db.Categoria.Add(nuevaCategoria);
+                    db.SaveChanges();
                 }
+
+                MessageBox.Show("Registro insertado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                Mostrar_Datos();
             }
             catch (Exception ex)
             {
@@ -71,26 +72,37 @@ namespace Formulario_2
             }
         }
 
+        private void btnInsertar_Click(object sender, EventArgs e)
+        {
+            foreach (DataGridViewRow fila in dataGridView1.Rows)
+            {
+                if (fila.IsNewRow) continue;
+                if (fila.Cells["ID Categoria"].Value == null || string.IsNullOrEmpty(fila.Cells["ID Categoria"].Value.ToString()))
+                {
+                    Insertar_Datos(fila);
+                }
+            }
+        }
+        //_________________________________________________________________//
+
+
+
+
+        //___________________________Actualizar Datos________________________\\
         public void Actualizar_Datos(int categoriaID, DataGridViewRow fila)
         {
             try
             {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-                using (SqlConnection cn = new SqlConnection(conexion))
+                using (var db = new AppDbContext())
                 {
-                    cn.Open();
+                    var categoria = db.Categoria.FirstOrDefault(c => c.CategoriaID == categoriaID);
 
-                    string query = "UPDATE Categoria SET Nombre=@Nombre WHERE CategoriaID=@CategoriaID";
-
-                    SqlCommand cmd = new SqlCommand(query, cn);
-                    cmd.Parameters.AddWithValue("@CategoriaID", categoriaID);
-                    cmd.Parameters.AddWithValue("@Nombre", fila.Cells["Nombre"].Value ?? DBNull.Value);
-                    
-
-                    int filasAfectadas = cmd.ExecuteNonQuery();
-
-                    if (filasAfectadas > 0)
+                    if (categoria != null)
                     {
+                        categoria.Nombre = fila.Cells["Nombre"].Value?.ToString();
+
+                        db.SaveChanges();
+
                         MessageBox.Show("Registro actualizado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         Mostrar_Datos();
                     }
@@ -107,66 +119,12 @@ namespace Formulario_2
         }
 
 
-        public void Eliminar_Datos(int categoriaID)
-        {
-            try
-            {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-                using (SqlConnection cn = new SqlConnection(conexion))
-                {
-                    cn.Open();
-                    string query = "DELETE FROM Categoria WHERE CategoriaID = @CategoriaID";
-
-                    SqlCommand cmd = new SqlCommand(query, cn);
-                    cmd.Parameters.AddWithValue(@"CategoriaID", categoriaID);
-
-                    int filasAfectadas = cmd.ExecuteNonQuery();
-
-                    if (filasAfectadas > 0)
-                    {
-                        MessageBox.Show("Registro eliminado correctamente", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        Mostrar_Datos();
-                    }
-                    else
-                    {
-                        MessageBox.Show("No se encontró el registro para eliminara", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-
-
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private void btnMostrar_Click(object sender, EventArgs e)
-        {
-            Mostrar_Datos();
-        }
-
-
-        private void btnInsertar_Click(object sender, EventArgs e)
-        {
-            foreach (DataGridViewRow fila in dataGridView1.Rows)
-            {
-                if (fila.IsNewRow) continue;
-                if (fila.Cells["ID Categoria"].Value == null || string.IsNullOrEmpty(fila.Cells["ID Categoria"].Value.ToString()))
-                {
-                    Insertar_Datos(fila);
-                }
-            }
-        }
-
-
         private void btnActualizar_Click(object sender, EventArgs e)
         {
             if (dataGridView1.SelectedRows.Count > 0)
             {
                 DataGridViewRow fila = dataGridView1.SelectedRows[0];
                 int categoriaID = Convert.ToInt32(fila.Cells["ID Categoria"].Value);
-
                 Actualizar_Datos(categoriaID, fila);
             }
             else
@@ -174,6 +132,41 @@ namespace Formulario_2
                 MessageBox.Show("Seleccione una fila para actualizar.", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
+        //________________________________________________________________\\
+
+
+
+
+
+        //___________________________Eliminar Datos________________________\\
+        public void Eliminar_Datos(int categoriaID)
+        {
+            try
+            {
+                using (var db = new AppDbContext())
+                {
+                    var categoria = db.Categoria.FirstOrDefault(c => c.CategoriaID == categoriaID);
+
+                    if (categoria != null)
+                    {
+                        db.Categoria.Remove(categoria);
+                        db.SaveChanges();
+
+                        MessageBox.Show("Registro eliminado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        Mostrar_Datos();
+                    }
+                    else
+                    {
+                        MessageBox.Show("No se encontró el registro para eliminar.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al eliminar: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
 
 
         private void btnEliminar_Click(object sender, EventArgs e)
@@ -188,6 +181,9 @@ namespace Formulario_2
                 MessageBox.Show("Seleccione una fila para eliminar", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
+
+        //________________________________________________________________\\
+
 
         private void Form1_Load_1(object sender, EventArgs e)
         {

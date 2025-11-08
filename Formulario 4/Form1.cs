@@ -1,3 +1,4 @@
+ï»¿using Biblioteca_de_clases;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Data;
@@ -19,77 +20,87 @@ namespace Formulario_4
         }
 
 
+        //_____________________Eliminar Datos_____________________\\
         public void Eliminar_Datos(int productoID)
         {
             try
             {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-                using (SqlConnection cn = new SqlConnection(conexion))
+                using (var db = new AppDbContext())
                 {
-                    cn.Open();
-                    string query = "DELETE FROM Producto WHERE ProductoID = @ProductoID";
+                    var producto = db.Productos.FirstOrDefault(p => p.ProductoID == productoID);
 
-                    SqlCommand cmd = new SqlCommand(query, cn);
-                    cmd.Parameters.AddWithValue(@"ProductoID", productoID);
-
-                    int filasAfectadas = cmd.ExecuteNonQuery();
-
-                    if (filasAfectadas > 0)
+                    if (producto != null)
                     {
-                        MessageBox.Show("Registro eliminado correctamente", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        db.Productos.Remove(producto);
+                        db.SaveChanges();
+
+                        MessageBox.Show("Registro eliminado correctamente", "Ã‰xito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         Mostrar_Datos();
                     }
                     else
                     {
-                        MessageBox.Show("No se encontró el registro para eliminara", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show("No se encontrÃ³ el registro para eliminar", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
-
-
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error al eliminar: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-        
+
         }
 
 
         private void btnEliminar_Click(object sender, EventArgs e)
         {
-            if (dataGridView1.SelectedRows.Count > 0)
-            {
-                int proveedorID = Convert.ToInt32(dataGridView1.SelectedRows[0].Cells["ID Producto"].Value);
-                Eliminar_Datos(proveedorID);
-            }
-            else
-            {
-                MessageBox.Show("Seleccione una fila para eliminar", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
-        }
-
-        public void Mostrar_Datos()
-        {
             try
             {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-
-
-                using (SqlConnection cn = new SqlConnection(conexion))
+                if (dataGridView1.SelectedRows.Count > 0)
                 {
-                    cn.Open();
-                    string query = "SELECT ProductoID, Nombre, Descripcion, Precio, Stock, CategoriaID FROM Producto";
-
-                    SqlDataAdapter da = new SqlDataAdapter(query, cn);
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-                    dataGridView1.AutoGenerateColumns = false;
-                    dataGridView1.DataSource = dt;
+                    // âœ… ConversiÃ³n segura sin errores decimal â†’ int
+                    int productoID = Convert.ToInt32(dataGridView1.SelectedRows[0].Cells["ID Producto"].Value);
+                    Eliminar_Datos(productoID);
+                }
+                else
+                {
+                    MessageBox.Show("Seleccione una fila para eliminar", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Error" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+        }
+        //__________________________________________________________\\
+
+
+
+        //_____________________Mostrar Datos_____________________\\
+        public void Mostrar_Datos()
+        {
+            try
+            {
+                using (var db = new AppDbContext())
+                {
+                    var productos = db.Productos
+                        .Select(p => new
+                        {
+                            p.ProductoID,
+                            p.Nombre,
+                            p.Descripcion,
+                            p.Precio,
+                            p.Stock,
+                            p.CategoriaID
+                        })
+                        .ToList();
+
+                    dataGridView1.DataSource = productos;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error al mostrar datos: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -97,39 +108,34 @@ namespace Formulario_4
         {
             Mostrar_Datos();
         }
+        //__________________________________________________________\\
 
 
+
+        //_____________________Actualizar Datos_____________________\\
         public void Actualizar_Datos(int productoID, DataGridViewRow fila)
         {
             try
             {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-                using (SqlConnection cn = new SqlConnection(conexion))
+                using (var db = new AppDbContext())
                 {
-                    cn.Open();
+                    var producto = db.Productos.FirstOrDefault(p => p.ProductoID == productoID);
 
-                    string query = "UPDATE Producto SET Nombre=@Nombre, Descripcion=@Descripcion, Precio=@Precio, Stock=@Stock, " +
-                        " CategoriaID=@CategoriaID WHERE ProductoID=@ProductoID";
-
-                    SqlCommand cmd = new SqlCommand(query, cn);
-                    cmd.Parameters.AddWithValue("@ProductoID", productoID);
-                    cmd.Parameters.AddWithValue("@Nombre", fila.Cells["Producto"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Descripcion", fila.Cells["Descripcion"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Precio", fila.Cells["Precio"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Stock", fila.Cells["Stock"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@CategoriaID", fila.Cells["ID Categoria"].Value ?? DBNull.Value);
-
-
-                    int filasAfectadas = cmd.ExecuteNonQuery();
-
-                    if (filasAfectadas > 0)
+                    if (producto != null)
                     {
-                        MessageBox.Show("Registro actualizado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        producto.Nombre = fila.Cells["Producto"].Value?.ToString();
+                        producto.Descripcion = fila.Cells["Descripcion"].Value?.ToString();
+                        producto.Precio = Convert.ToInt32(fila.Cells["Precio"].Value);
+                        producto.Stock = Convert.ToInt32(fila.Cells["Stock"].Value);
+                        producto.CategoriaID = Convert.ToInt32(fila.Cells["ID Categoria"].Value);
+
+                        db.SaveChanges();
+                        MessageBox.Show("Registro actualizado correctamente.", "Ã‰xito", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         Mostrar_Datos();
                     }
                     else
                     {
-                        MessageBox.Show("No se encontró el registro para actualizar.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show("No se encontrÃ³ el registro para actualizar.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
@@ -146,7 +152,6 @@ namespace Formulario_4
             {
                 DataGridViewRow fila = dataGridView1.SelectedRows[0];
                 int productoID = Convert.ToInt32(fila.Cells["ID Producto"].Value);
-
                 Actualizar_Datos(productoID, fila);
             }
             else
@@ -154,35 +159,31 @@ namespace Formulario_4
                 MessageBox.Show("Seleccione una fila para actualizar.", "Advertencia", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
+        //__________________________________________________________\\
 
 
+
+        //_____________________Insertar Datos_____________________\\
         public void Insertar_Datos(DataGridViewRow fila)
         {
             try
             {
-                string conexion = @"Server=DESKTOP-7HI1QD0;Database=base_de_datos_practica;Trusted_Connection=True;Encrypt=False;";
-                using (SqlConnection cn = new SqlConnection(conexion))
+                using (var db = new AppDbContext())
                 {
-                    cn.Open();
-
-                    string query = "INSERT INTO Producto (Nombre, Descripcion, Precio, Stock, CategoriaID) " +
-                                   "VALUES (@Nombre, @Descripcion, @Precio, @Stock, @CategoriaID)";
-
-                    SqlCommand cmd = new SqlCommand(query, cn);
-                    cmd.Parameters.AddWithValue("@Nombre", fila.Cells["Producto"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Descripcion", fila.Cells["Descripcion"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Precio", fila.Cells["Precio"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Stock", fila.Cells["Stock"].Value ?? DBNull.Value);
-                    cmd.Parameters.AddWithValue("@CategoriaID", fila.Cells["ID Categoria"].Value ?? DBNull.Value);
-
-
-                    int filasAfectadas = cmd.ExecuteNonQuery();
-
-                    if (filasAfectadas > 0)
+                    var producto = new Producto
                     {
-                        MessageBox.Show("Registro insertado correctamente.", "Éxito", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        Mostrar_Datos();
-                    }
+                        Nombre = fila.Cells["Producto"].Value?.ToString(),
+                        Descripcion = fila.Cells["Descripcion"].Value?.ToString(),
+                        Precio = Convert.ToInt32(fila.Cells["Precio"].Value),
+                        Stock = Convert.ToInt32(fila.Cells["Stock"].Value),
+                        CategoriaID = Convert.ToInt32(fila.Cells["ID Categoria"].Value)
+                    };
+
+                    db.Productos.Add(producto);
+                    db.SaveChanges();
+
+                    MessageBox.Show("Registro insertado correctamente.", "Ã‰xito", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    Mostrar_Datos();
                 }
             }
             catch (Exception ex)
@@ -203,6 +204,8 @@ namespace Formulario_4
                 }
             }
         }
+        //__________________________________________________________\\
+
 
         private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
